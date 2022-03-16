@@ -24,7 +24,7 @@ import (
 )
 
 // TestCloneRepo tests CloneAndCheckout function that is provided with a dummy git repository (no actual cloning is performed)
-// The repo has following commits
+// The repo has the following commits
 // 1. Add README (tagged with 1.0.0)
 // 2. Update README (tagged with 2.0.0 - HEAD)
 func TestCloneRepo(t *testing.T) {
@@ -123,7 +123,6 @@ func TestTokenRead(t *testing.T) {
 
 		cloner := Cloner{
 			repo:               &repo,
-			autoCheckout:       false,
 			repoClient:         nil,
 			inClusterClientSet: client,
 			logger:             logger.NewLogger(true),
@@ -167,7 +166,6 @@ func TestTokenRead(t *testing.T) {
 
 		cloner := Cloner{
 			repo:               &repo,
-			autoCheckout:       false,
 			repoClient:         nil,
 			inClusterClientSet: nil,
 			logger:             logger.NewLogger(true),
@@ -186,7 +184,6 @@ func TestTokenRead(t *testing.T) {
 
 		cloner := Cloner{
 			repo:               &repo,
-			autoCheckout:       false,
 			repoClient:         nil,
 			inClusterClientSet: nil,
 			logger:             logger.NewLogger(true),
