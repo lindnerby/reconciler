@@ -349,7 +349,7 @@ func (f *DefaultFactory) clone(version string, dstDir string, markerDir string, 
 		return err
 	}
 
-	cloner, _ := git.NewCloner(&git.Client{}, repo, true, auth, f.logger)
+	cloner, _ := git.NewCloner(&git.Client{}, repo, auth, f.logger)
 	if err = cloner.CloneAndCheckout(dstDir, version); err != nil {
 		f.logger.Warnf("Deleting workspace '%s' because GIT clone of repository-URL '%s' with revision '%s' failed",
 			dstDir, repo.URL, version)
@@ -419,7 +419,7 @@ func (f *DefaultFactory) fetchComponent(component *Component, dstDir string) err
 	if err != nil {
 		return err
 	}
-	cloner, _ := git.NewCloner(&git.Client{}, repo, true, auth, f.logger)
+	cloner, _ := git.NewCloner(&git.Client{}, repo, auth, f.logger)
 	return cloner.FetchAndCheckout(dstPath, component.version)
 }
 
@@ -431,7 +431,7 @@ func (f *DefaultFactory) getLatestRevOfVersion(version, path string) (string, er
 		return "", err
 	}
 
-	cloner, _ := git.NewCloner(gitClient, nil, true, nil, f.logger)
+	cloner, _ := git.NewCloner(gitClient, nil, nil, f.logger)
 	revision, err := cloner.ResolveRevisionOrBranchHead(version)
 	if err != nil {
 		return "", err

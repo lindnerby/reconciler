@@ -12,11 +12,10 @@ import (
 )
 
 type Cloner struct {
-	repo         *reconciler.Repository
-	autoCheckout bool
-	auth         *BasicAuth
-	repoClient   RepoClient
-	logger       *zap.SugaredLogger
+	repo       *reconciler.Repository
+	auth       *BasicAuth
+	repoClient RepoClient
+	logger     *zap.SugaredLogger
 }
 
 type BasicAuth struct {
@@ -34,13 +33,12 @@ type RepoClient interface {
 	DefaultBranch() (*gitp.Reference, error)
 }
 
-func NewCloner(repoClient RepoClient, repo *reconciler.Repository, autoCheckout bool, auth *BasicAuth, logger *zap.SugaredLogger) (*Cloner, error) {
+func NewCloner(repoClient RepoClient, repo *reconciler.Repository, auth *BasicAuth, logger *zap.SugaredLogger) (*Cloner, error) {
 	return &Cloner{
-		repo:         repo,
-		autoCheckout: autoCheckout,
-		repoClient:   repoClient,
-		auth:         auth,
-		logger:       logger,
+		repo:       repo,
+		repoClient: repoClient,
+		auth:       auth,
+		logger:     logger,
 	}, nil
 }
 
@@ -58,7 +56,7 @@ func (r *Cloner) Clone(path string) (*git.Repository, error) {
 	return r.repoClient.Clone(context.Background(), path, false, &git.CloneOptions{
 		Depth:             0,
 		URL:               r.repo.URL,
-		NoCheckout:        !r.autoCheckout,
+		NoCheckout:        false,
 		Auth:              basicAuth,
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 	})
