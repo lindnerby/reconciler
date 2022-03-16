@@ -1,12 +1,17 @@
 package chart
 
 import (
+	"context"
 	"crypto/sha1" //nolint
 	"fmt"
 	reconcilerK8s "github.com/kyma-incubator/reconciler/pkg/reconciler/kubernetes"
 	"io"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
+	"net/url"
 	"path"
+	"strings"
 
 	"os"
 
@@ -303,17 +308,49 @@ func (f *DefaultFactory) readyFile(dstDir string) string {
 	return filepath.Join(dstDir, wsReadyIndicatorFile)
 }
 
+func (f *DefaultFactory) tryGetAuth(tokenNamespace string, repoURL string) (*git.BasicAuth, error) {
+	clientSet, err := reconcilerK8s.NewInClusterClientSet(f.logger)
+	if err != nil {
+		f.logger.Infof("Unable to create clientset: %v. Continuing without auth.", err)
+		return nil, nil
+	}
+
+	secretKey, err := mapSecretKey(repoURL)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, err := clientSet.CoreV1().
+		Secrets(tokenNamespace).
+		Get(context.Background(), secretKey, v1.GetOptions{})
+
+	if err != nil && !apierrors.IsNotFound(err) && !apierrors.IsForbidden(err) {
+		return nil, err
+	}
+
+	if secret != nil && err == nil {
+		return &git.BasicAuth{
+			Username: "anything but an empty string",
+			Password: strings.Trim(string(secret.Data["token"]), "\n"),
+		}, nil
+	}
+
+	f.logger.Info("Token not found or forbidden")
+	return nil, nil
+
+}
+
 func (f *DefaultFactory) clone(version string, dstDir string, markerDir string, repo *reconciler.Repository) error {
 	f.logger.Infof("Cloning GIT repository '%s' with revision '%s' into workspace '%s'",
 		repo.URL, version, dstDir)
 
-	clientSet, err := reconcilerK8s.NewInClusterClientSet(f.logger)
+	auth, err := f.tryGetAuth(repo.TokenNamespace, repo.URL)
 	if err != nil {
 		return err
 	}
 
-	cloner, _ := git.NewCloner(&git.Client{}, repo, true, clientSet, f.logger)
-	if err := cloner.CloneAndCheckout(dstDir, version); err != nil {
+	cloner, _ := git.NewCloner(&git.Client{}, repo, true, auth, f.logger)
+	if err = cloner.CloneAndCheckout(dstDir, version); err != nil {
 		f.logger.Warnf("Deleting workspace '%s' because GIT clone of repository-URL '%s' with revision '%s' failed",
 			dstDir, repo.URL, version)
 
@@ -323,7 +360,7 @@ func (f *DefaultFactory) clone(version string, dstDir string, markerDir string, 
 		return err
 	}
 	//create a marker file to flag success
-	if err := f.createReadyMarker(markerDir); err != nil {
+	if err = f.createReadyMarker(markerDir); err != nil {
 		return err
 	}
 	return nil
@@ -373,15 +410,16 @@ func (f *DefaultFactory) fetchComponent(component *Component, dstDir string) err
 		URL: component.url,
 	}
 
-	tokenNamespace := component.configuration["repo.token.namespace"]
-	if tokenNamespace != nil {
+	tokenNamespace := component.configuration["repo.token.namespace"].(string)
+	if len(tokenNamespace) == 0 {
 		repo.TokenNamespace = fmt.Sprintf("%s", tokenNamespace)
 	}
-	clientSet, err := reconcilerK8s.NewInClusterClientSet(f.logger)
+
+	auth, err := f.tryGetAuth(tokenNamespace, repo.URL)
 	if err != nil {
 		return err
 	}
-	cloner, _ := git.NewCloner(&git.Client{}, repo, true, clientSet, f.logger)
+	cloner, _ := git.NewCloner(&git.Client{}, repo, true, auth, f.logger)
 	return cloner.FetchAndCheckout(dstPath, component.version)
 }
 
@@ -447,4 +485,22 @@ func (f *DefaultFactory) createReadyMarker(wsDir string) error {
 		f.logger.Warnf("Failed to close marker file: %s", err)
 	}
 	return nil
+}
+
+func mapSecretKey(URL string) (string, error) {
+	if !strings.HasPrefix(URL, "http") {
+		URL = "https://" + URL
+	}
+	URL = strings.ReplaceAll(URL, "www.", "")
+	parsed, err := url.Parse(URL)
+	if err != nil {
+		return "", err
+	}
+	if parsed.Scheme == "" {
+		return parsed.Path, nil
+	}
+	output := strings.ReplaceAll(parsed.Host, ":"+parsed.Port(), "")
+	output = strings.ReplaceAll(output, "www.", "")
+
+	return output, nil
 }
