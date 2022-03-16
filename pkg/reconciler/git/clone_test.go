@@ -67,7 +67,7 @@ func TestCloneRepo(t *testing.T) {
 	clonerMock.On("ResolveRevision",
 		gitp.Revision("1.0.0")).
 		Return(repo.ResolveRevision("1.0.0"))
-	cloner, _ := NewCloner(clonerMock, &r, true, fake.NewSimpleClientset(), logger.NewLogger(true))
+	cloner, _ := NewCloner(clonerMock, &r, fake.NewSimpleClientset(), logger.NewLogger(true))
 
 	headRef, err := repo.Head()
 	require.NoError(t, err)

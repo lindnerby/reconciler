@@ -36,7 +36,6 @@ const (
 	VersionLocal         = "local"
 	defaultRepositoryURL = "https://github.com/kyma-project/kyma"
 	wsReadyIndicatorFile = "workspace-ready.yaml"
-
 	gitComponentsBaseDir = "base"
 )
 
