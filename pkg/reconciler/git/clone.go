@@ -3,8 +3,10 @@ package git
 import (
 	"context"
 	"fmt"
+
 	"github.com/go-git/go-git/v5"
 	gitp "github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/kyma-incubator/reconciler/pkg/reconciler"
 	"github.com/pkg/errors"
@@ -44,8 +46,7 @@ func NewCloner(repoClient RepoClient, repo *reconciler.Repository, auth *BasicAu
 
 // Clone clones the repository from the given remote URL to the given `path` in the local filesystem.
 func (r *Cloner) Clone(path string) (*git.Repository, error) {
-
-	var basicAuth *http.BasicAuth
+	var basicAuth transport.AuthMethod
 	if r.auth != nil {
 		basicAuth = &http.BasicAuth{
 			Username: r.auth.Username,
